@@ -21,6 +21,7 @@ export async function POST(request: Request) {
         const pokemon = await Pokemon.create(body);
         return NextResponse.json({ success: true, data: pokemon }, { status: 201 });
     } catch (error) {
+        console.error('API Error (POST /api/pokemon):', error);
         return NextResponse.json({ success: false, error: error }, { status: 400 });
     }
 }

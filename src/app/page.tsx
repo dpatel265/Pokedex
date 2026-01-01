@@ -64,6 +64,7 @@ export default function Home() {
 			if (response.ok) {
 				alert(`Gotcha! ${pokemon.name} was caught!`);
 			} else {
+				const errorData: any = await response.json(); // eslint-disable-line @typescript-eslint/no-explicit-any
 				console.error('Catch failed:', errorData);
 				alert(`Failed to catch ${pokemon.name}: ${errorData.error?.message || errorData.error || 'Unknown error'}`);
 			}
