@@ -1,52 +1,125 @@
-import Image from "next/image";
+'use client';
+
+import { useState, useEffect } from 'react';
+import PokemonCard from '@/components/PokemonCard';
+import { Pokemon, PokeApiResponse, PokemonDetailResponse } from '@/types';
+import { motion } from 'framer-motion';
 
 export default function Home() {
-	return (
-		<div className="font-sans grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20">
-			<main className="flex flex-col gap-[32px] row-start-2 items-center sm:items-start">
-				<Image className="dark:invert" src="/next.svg" alt="Next.js logo" width={180} height={38} priority />
-				<ol className="font-mono list-inside list-decimal text-sm/6 text-center sm:text-left">
-					<li className="mb-2 tracking-[-.01em]">
-						Get started by editing{" "}
-						<code className="bg-black/[.05] dark:bg-white/[.06] font-mono font-semibold px-1 py-0.5 rounded">
-							src/app/page.tsx
-						</code>
-						.
-					</li>
-					<li className="tracking-[-.01em]">Save and see your changes instantly.</li>
-				</ol>
+	const [pokemons, setPokemons] = useState<Pokemon[]>([]);
+	const [filteredPokemons, setFilteredPokemons] = useState<Pokemon[]>([]);
+	const [search, setSearch] = useState('');
+	const [loading, setLoading] = useState(true);
+	const [catchingId, setCatchingId] = useState<number | null>(null);
 
-				<div className="flex gap-4 items-center flex-col sm:flex-row">
-					<a
-						className="rounded-full border border-solid border-black/[.08] dark:border-white/[.145] transition-colors flex items-center justify-center hover:bg-[#f2f2f2] dark:hover:bg-[#1a1a1a] hover:border-transparent font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 w-full sm:w-auto md:w-[158px]"
-						href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-						target="_blank"
-						rel="noopener noreferrer"
-					>
-						Read our docs
-					</a>
+	useEffect(() => {
+		const fetchPokemons = async () => {
+			try {
+				const response = await fetch('https://pokeapi.co/api/v2/pokemon?limit=151');
+				const data: PokeApiResponse = await response.json();
+
+				const detailedPokemons = await Promise.all(
+					data.results.map(async (result) => {
+						const res = await fetch(result.url);
+						const details: PokemonDetailResponse = await res.json();
+						return {
+							id: details.id,
+							name: details.name,
+							types: details.types.map((t) => t.type.name),
+							sprite: details.sprites.other?.['official-artwork'].front_default || details.sprites.front_default,
+						};
+					})
+				);
+
+				setPokemons(detailedPokemons);
+				setFilteredPokemons(detailedPokemons);
+			} catch (error) {
+				console.error('Error fetching pokemon:', error);
+			} finally {
+				setLoading(false);
+			}
+		};
+
+		fetchPokemons();
+	}, []);
+
+	useEffect(() => {
+		const filtered = pokemons.filter((p) =>
+			p.name.toLowerCase().includes(search.toLowerCase())
+		);
+		setFilteredPokemons(filtered);
+	}, [search, pokemons]);
+
+	const handleCatch = async (pokemon: Pokemon) => {
+		setCatchingId(pokemon.id);
+		try {
+			const response = await fetch('/api/pokemon', {
+				method: 'POST',
+				headers: {
+					'Content-Type': 'application/json',
+				},
+				body: JSON.stringify(pokemon),
+			});
+
+			if (response.ok) {
+				alert(`Gotcha! ${pokemon.name} was caught!`);
+			} else {
+				console.error('Catch failed:', errorData);
+				alert(`Failed to catch ${pokemon.name}: ${errorData.error?.message || errorData.error || 'Unknown error'}`);
+			}
+		} catch (error) {
+			console.error('Error catching pokemon:', error);
+			alert('Error catching pokemon. Check console for details.');
+		} finally {
+			setCatchingId(null);
+		}
+	};
+
+	return (
+		<div className="space-y-8">
+			<div className="text-center space-y-4">
+				<h1 className="text-4xl font-extrabold tracking-tight lg:text-5xl text-red-600">
+					Wild Pokémon
+				</h1>
+				<p className="text-lg text-gray-600">
+					Search and catch your favorite Pokémon to add them to your collection!
+				</p>
+				<div className="max-w-md mx-auto">
+					<input
+						type="text"
+						placeholder="Search Pokémon..."
+						value={search}
+						onChange={(e) => setSearch(e.target.value)}
+						className="w-full px-4 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-red-500 focus:border-red-500 transition-shadow outline-none"
+					/>
 				</div>
-			</main>
-			<footer className="row-start-3 flex gap-[24px] flex-wrap items-center justify-center">
-				<a
-					className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-					href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-					target="_blank"
-					rel="noopener noreferrer"
+			</div>
+
+			{loading ? (
+				<div className="flex justify-center items-center h-64">
+					<div className="animate-spin rounded-full h-16 w-16 border-t-2 border-b-2 border-red-600"></div>
+				</div>
+			) : (
+				<motion.div
+					className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6"
+					initial={{ opacity: 0 }}
+					animate={{ opacity: 1 }}
 				>
-					<Image aria-hidden src="/file.svg" alt="File icon" width={16} height={16} />
-					Learn
-				</a>
-				<a
-					className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-					href="https://nextjs.org?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-					target="_blank"
-					rel="noopener noreferrer"
-				>
-					<Image aria-hidden src="/globe.svg" alt="Globe icon" width={16} height={16} />
-					Go to nextjs.org →
-				</a>
-			</footer>
+					{filteredPokemons.map((pokemon) => (
+						<PokemonCard
+							key={pokemon.id}
+							pokemon={pokemon}
+							onAction={handleCatch}
+							actionLabel="Catch!"
+							isActionLoading={catchingId === pokemon.id}
+						/>
+					))}
+				</motion.div>
+			)}
+
+			{!loading && filteredPokemons.length === 0 && (
+				<p className="text-center text-gray-500 text-lg">No Pokémon found.</p>
+			)}
 		</div>
 	);
 }
